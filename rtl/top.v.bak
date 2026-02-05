@@ -1,0 +1,122 @@
+module top(
+    input wire clk,
+    input wire rst_n,
+    //指令存储器接口
+    input wire [31:0] inst_in,
+    output wire [31:0] pc_out,
+    // 数据寄存器接口由顶层内部实例化的 data_ram 提供
+    output wire led
+    /*//调试接口
+    output wire [31:0] debug_wb_pc,
+    output wire [3:0]  debug_wb_rf_wen,
+    output wire [4:0]  debug_wb_rf_wnum,
+    output wire [31:0] debug_wb_rf_wdata,
+    output wire [33:0] debug_exe_if_jmp_bus,
+    output wire [31:0] reg3,
+    output wire [31:0] debug_csr_wdata,
+    output wire [11:0] debug_csr_waddr,
+    output wire        debug_csr_we*/
+);
+
+
+    
+    wire [63:0] if_id_bus;
+    wire stall_flag_internal;
+    wire [175:0] id_exe_bus;
+    wire [33:0] exe_if_jmp_bus;
+    wire br_jmp_flag = exe_if_jmp_bus[33] | exe_if_jmp_bus[0];
+    wire ecall_flag;
+    wire [186:0] exe_mem_bus;
+    wire [37:0] exe_id_data_bus;
+    wire [69:0] mem_wb_bus;
+    wire [37:0] mem_wb_regfile;
+    wire [31:0] csr_ecall;
+    wire [37:0] wb_data_bus;
+    wire         ds_allowin;
+    wire         es_allowin;
+    wire         ms_allowin;
+    wire         ws_allowin;
+    wire         fs_to_ds_valid;
+    wire         ds_to_es_valid;
+    wire         es_to_ms_valid;
+    wire         ms_to_ws_valid;
+    wire [11:0] csr_raddr;
+    
+
+    // Bridge接口
+    wire [31:0] bridge_rdata;
+    // internal data memory signals (连接 CPU 与桥接器)
+    wire [31:0] data_rdata; // CPU-side read data (from bridge)
+    wire [31:0] data_raddr;
+    wire        data_re;
+    wire [31:0] data_wdata;
+    wire [31:0] data_waddr;
+    wire        data_we;
+    // Bridge <-> Data RAM external interface (bridge drives these)
+    wire [31:0] ext_raddr;
+    wire        ext_re;
+    wire [31:0] ext_waddr;
+    wire        ext_we;
+    wire [31:0] ext_wdata;
+    wire [31:0] ext_rdata; // data_ram read data to bridge
+
+    //debug
+    assign debug_exe_if_jmp_bus = exe_if_jmp_bus;"},{"explanation":"Connect bridge ext_* to ext wires and data_ram to ext wires (fix overlap)","filePath":"f:\\FPGA\\FPGA\\riscv-cpu\\rtl\\top.v","oldString":"    // Bridge for data register access (up to 2KB)
+    bridge u_bridge (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .cpu_raddr  (data_raddr),
+        .cpu_re     (data_re),
+        .cpu_waddr  (data_waddr),
+        .cpu_we     (data_we),
+        .cpu_wdata  (data_wdata),
+        .cpu_rdata  (bridge_rdata),
+        .ext_raddr  (data_raddr),  // 连接到外部
+        .ext_re     (data_re),
+        .ext_rdata  (data_rdata),
+        .ext_waddr  (data_waddr),
+        .ext_we     (data_we),
+        .ext_wdata  (data_wdata),
+        .led        (led)
+    );
+
+    // Data RAM (2KB) instance connected to bridge ext_* signals
+    data_ram u_data_ram (
+        .clk    (clk),
+        .raddr  (data_raddr),
+        .re     (data_re),
+        .rdata  (data_rdata),
+        .waddr  (data_waddr),
+        .we     (data_we),
+        .wdata  (data_wdata)
+    );","newString":"    // Bridge for data register access (up to 2KB)
+    bridge u_bridge (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .cpu_raddr  (data_raddr),
+        .cpu_re     (data_re),
+        .cpu_waddr  (data_waddr),
+        .cpu_we     (data_we),
+        .cpu_wdata  (data_wdata),
+        .cpu_rdata  (bridge_rdata),
+        // connect bridge external side to data RAM signals
+        .ext_raddr  (ext_raddr),
+        .ext_re     (ext_re),
+        .ext_rdata  (ext_rdata),
+        .ext_waddr  (ext_waddr),
+        .ext_we     (ext_we),
+        .ext_wdata  (ext_wdata),
+        .led        (led)
+    );
+
+    // Data RAM (2KB) instance connected to bridge ext_* signals
+    data_ram u_data_ram (
+        .clk    (clk),
+        .raddr  (ext_raddr),
+        .re     (ext_re),
+        .rdata  (ext_rdata),
+        .waddr  (ext_waddr),
+        .we     (ext_we),
+        .wdata  (ext_wdata)
+    );
+endmodule
